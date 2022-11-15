@@ -1,4 +1,4 @@
-package logic.entity
+package logic.entity.math
 
 import kotlin.math.cos
 import kotlin.math.sin
@@ -85,8 +85,8 @@ class Matrix(rows: Int = 0, columns: Int = 0) {
         fun getCamMatrix(camera: Vector, target: Vector): Matrix {
             val up = Vector(y = 1.0)
             val zAxis = (camera - target).normalized()
-            val xAxis = (up * zAxis).normalized()
-            val yAxis = zAxis * xAxis
+            val xAxis = (zAxis * up).normalized()
+            val yAxis = xAxis * zAxis
             return Matrix(4, 4).apply {
                 values[0] = arrayListOf(xAxis.x, xAxis.y, xAxis.z, -(xAxis.scalarMul(camera)))
                 values[1] = arrayListOf(yAxis.x, yAxis.y, yAxis.z, -(yAxis.scalarMul(camera)))

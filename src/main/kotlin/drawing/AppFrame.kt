@@ -1,29 +1,25 @@
 package drawing
 
-import logic.WorldManager
-import logic.entity.Model
-import logic.entity.Matrix
-import logic.entity.Vector
+import drawing.model.VisibleModel
+import logic.entity.math.Vector
+import logic.entity.model.Model
+import java.awt.Color
 import java.awt.Dimension
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import javax.swing.JFrame
 import kotlin.math.PI
 
-
 var frameWidth = 600
 var frameHeight = 600
-val zNear = 0.1
-val zFar = 1.0
-val fov = PI/3
+const val zNear = 0.1
+const val zFar = 100.0
+const val fov = PI/3
 var aspect = 1.0
 
-val rotationStep = PI/32
-val movementStep = 2.0
-
-class AppFrame: JFrame() {
+class AppFrame(model: Model): JFrame() {
     private val canvas = MyCanvas()
-    private var lastModel: Model? = null
+    private val visibleModel = VisibleModel(model, canvas)
 
     init {
         this.size = Dimension(frameWidth, frameHeight)
@@ -35,7 +31,7 @@ class AppFrame: JFrame() {
                 frameHeight = event.component.height
                 aspect = frameWidth/frameHeight.toDouble()
 
-                lastModel?.let { draw(it) }
+                visibleModel.render()
             }
 
             override fun componentHidden(event: ComponentEvent) {
@@ -52,21 +48,14 @@ class AppFrame: JFrame() {
     }
 
     fun onModelChanged(){
-        draw(lastModel!!)
-    }
+        visibleModel.render()
 
-    fun draw(model: Model){
-        lastModel = model
+        canvas.drawVector(Vector(1.0), color = Color.RED)
+        canvas.drawVector(Vector(y=1.0), color = Color.GREEN)
+        canvas.drawVector(Vector(z=1.0), color = Color.BLUE)
 
-        val vertices = WorldManager.projectModel(model)
-
-        val planes = ArrayList<Vector>()
-        for (plane in model.f)
-            planes += Vector(plane[0].x, plane[1].x, plane[2].x)
-        canvas.updateLines(vertices, planes)
-
-        this.repaint()
         canvas.repaint()
+        this.repaint()
     }
 }
 

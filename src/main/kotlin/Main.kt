@@ -1,10 +1,20 @@
 import drawing.AppFrame
-import logic.entity.Model
-
-const val path = "cube 2.obj"
+import logic.entity.math.Vector
+import logic.entity.model.Model
 
 fun main(){
-    val model = Model(path)
-    val frame = AppFrame()
-    frame.draw(model)
+    val model = Model(FILE)
+    /*val model = Model(
+        arrayListOf(
+            Vector(),
+            Vector(y=1.0),
+            Vector(x=1.0)
+        ),
+        arrayListOf(),
+        arrayListOf(),
+        arrayListOf(
+            arrayListOf(Vector(), Vector(1.0), Vector(2.0))
+        )
+    )*/
+    AppFrame(model)
 }

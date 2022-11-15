@@ -1,4 +1,4 @@
-package logic.entity
+package logic.entity.math
 
 import kotlin.math.sqrt
 
@@ -12,6 +12,14 @@ data class Vector(var x: Double = 0.0, var y: Double = 0.0, var z: Double = 0.0,
 
     operator fun plus(target: Vector): Vector {
         return Vector(x + target.x, y + target.y, z + target.z)
+    }
+
+    operator fun times(c: Double): Vector {
+        return Vector(
+            x = x*c,
+            y = y*c,
+            z = z*c
+        )
     }
 
     // vector multiplication
