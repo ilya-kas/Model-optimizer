@@ -54,12 +54,18 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
             }
     }
 
+    /**
+     * _plane - projected plane
+     */
     private fun showNormal(_plane: Plane){
         val projectedVerts = getProjectedPlane(model.f[_plane.num])
         val plane = Plane(projectedVerts, _plane.num)
         canvas.drawVector(calcNormal(model.f[_plane.num]).normalized(), plane.getMid(), Color.RED)
     }
 
+    /**
+     * plane - model plane
+     */
     private fun getProjectedPlane(plane: List<Vector>): List<Vector>{
         val verts = arrayListOf(
             model.v[plane[0].x.toInt()],
@@ -72,6 +78,9 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         return projectedVerts
     }
 
+    /**
+     * plane - model plane
+     */
     private fun calcNormal(plane: List<Vector>): Vector {
         val projectedVerts = getProjectedPlane(plane)
 
@@ -92,14 +101,21 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         return res
     }
 
+    /**
+     * plane - projected plane
+     */
     private fun isPlaneInvisible(plane: Plane): Boolean{
         val normal = calcNormal(model.f[plane.num])
-        val eye = currentCamera - currentTarget
-        val res = eye.scalarMul(normal) < 0
+        val corner = getProjectedPlane(model.f[plane.num])[0]
+        val eye = currentCamera - corner
+        val res = eye.scalarMul(normal) <= 0
         //println(eye.scalarMul(normal))
         return res
     }
 
+    /**
+     * plane - projected plane
+     */
     private fun getLightMultiplier(plane: Plane): Double {
         val ray = currentLight.normalized()
         val normal = calcNormal(model.f[plane.num]).normalized()
@@ -107,6 +123,9 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         return res
     }
 
+    /**
+     * plane - projected plane
+     */
     private fun fillPlane(plane: Plane){
         if (isPlaneInvisible(plane))
             return

@@ -69,7 +69,12 @@ class Model {
                                 values[i] = "0"
                         result += getAvailableData(values)
                     }
-                    f += result
+                    if (result.size > 3) {
+                        for (pl in 2 until result.size)
+                            f += arrayListOf(result[pl - 2], result[pl - 1], result[pl])
+                        f += arrayListOf(result[result.size-2], result[result.size-1], result[0])
+                    }else
+                        f += result
                 }
             }
         }

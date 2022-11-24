@@ -1,6 +1,6 @@
 import kotlin.math.PI
 
-const val FILE = "head.obj"
+const val FILE = "cube.obj"
 
 const val SCALE = 5.0
 
