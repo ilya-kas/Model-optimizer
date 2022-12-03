@@ -1,6 +1,9 @@
 import kotlin.math.PI
 
 const val FILE = "obj/warrior.obj"
+const val TEXTURE = "color.png"
+const val NORMAL = "normal.png"
+const val MIRROR = "mirror.png"
 
 const val SCALE = 5.0
 

@@ -4,6 +4,8 @@ import AMBIENT
 import DIFFUSE
 import SPECULAR
 import drawing.MyCanvas
+import drawing.frameHeight
+import drawing.frameWidth
 import logic.entity.currentLight
 import logic.entity.math.ScreenDot
 import logic.entity.math.Vector
@@ -23,7 +25,6 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
     private var screenModel = ScreenModel(worldModel)
 
     fun render(){
-        worldModel = WorldModel(model)
         screenModel = ScreenModel(worldModel)
 
         canvas.clear()
@@ -34,7 +35,7 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         if (showCornersNormals) println("vn в углах плоскостей")
         if (showMidNormal) println("нормаль в центре плоскости")
         if (showNormalMap) println("карта нормалей")
-        if (showBarCoordsMap) println("карта координат точки в барицентрических координатах")
+        if (showBarCoordsMap) println("карта координат точки в текстурных координатах")
         println("------------")
     }
 
@@ -52,11 +53,11 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
 
         if (showMidNormal){
             val mid = screenModel.calcPlaneMid(num)
-            val normal = worldModel.calcDotNormal(num, screenModel.calcBarycentricCoords(num, mid.x, mid.y)).normalized()
-            if (num == 0) {
+            val normal = worldModel.calcDotNormal(screenModel.calcTextureCoords(num, mid.x, mid.y))
+            /*if (num == 2) {
                 println(normal)
                 println(worldModel.calcPlaneNormal(num).normalized())
-            }
+            }*/
             canvas.drawVectorW(normal, worldModel.calcPlaneMid(num), Color.RED)
         }
     }
@@ -77,11 +78,11 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         return eye.scalarMul(normal) <= 0
     }
 
-    private fun getLightMultiplier(num: Int, barCoords: Vector): Float {
+    private fun getLightMultiplier(textureCoords: Vector): Float {
         val ambient = AMBIENT
 
         val ray = currentLight.normalized()
-        val normal = worldModel.calcDotNormal(num, barCoords).normalized()
+        val normal = worldModel.calcDotNormal(textureCoords).normalized()
         //val normal = worldModel.calcPlaneNormal(num).normalized()
         val diffuse = DIFFUSE * ray.scalarMul(normal).coerceAtLeast(0.0).toFloat()
 
@@ -92,36 +93,27 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         return ambient + diffuse + specular
     }
 
-    private fun sortVerts(num: Int): ArrayList<Int>{
-        val res = arrayListOf(0, 1, 2)
-        for (i in 0..2)
-            for (j in i..2)
-                if (screenModel.v[model.f[num][res[i]].vNum].y > screenModel.v[model.f[num][res[j]].vNum].y){
-                    val z = res[i]
-                    res[i] = res[j]
-                    res[j] = z
-                }
-        return res
-    }
-
     private fun getColorByCoordsS(num: Int, x: Double, y: Double): Color{
-        val barycentric = screenModel.calcBarycentricCoords(num, x, y)
-        val mult = getLightMultiplier(num, barycentric)
+        val textureCoords = screenModel.calcTextureCoords(num, x, y)
+        val mult = getLightMultiplier(textureCoords)
         if (showNormalMap) {
-            val normal = worldModel.calcDotNormal(num, barycentric).normalized()
+            val normal = model.calcDotNormal(textureCoords).normalized()
             return Color((normal.x.toFloat() + 1) / 2, (normal.y.toFloat() + 1) / 2, (normal.z.toFloat() + 1) / 2)
             //return Color(abs(normal.x.toFloat()), abs(normal.y.toFloat()), abs(normal.z.toFloat()))
         } else if (showBarCoordsMap) {
-            return Color(barycentric.x.toFloat(), barycentric.y.toFloat(), barycentric.z.toFloat())
+            return Color((textureCoords.x / model.textureImg.width).toFloat(), (textureCoords.y / model.textureImg.height).toFloat(), 0.5f)
         } else {
-            return Color(mult,mult,mult)
+            val texturePixel = model.calcTextureColor(textureCoords)
+            val lightColor = Color(mult,mult,mult)
+            return Color((texturePixel.red + lightColor.red)/2, (texturePixel.green + lightColor.green)/2, (texturePixel.blue + lightColor.blue)/2)
+            //return texturePixel
         }
     }
 
     private fun fillPlane(num: Int){
         if (isPlaneInvisible(num))
             return
-        val nums = sortVerts(num)
+        val nums = screenModel.sortVerts(num)
 
         val verts = arrayOf(
             screenModel.v[model.f[num][nums[0]].vNum],

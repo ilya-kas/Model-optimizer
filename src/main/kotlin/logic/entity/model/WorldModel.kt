@@ -18,6 +18,10 @@ class WorldModel(model: Model): Model() {
 
         for (_f in model.f)
             f += _f
+
+        textureImg = model.textureImg
+        normalImg = model.normalImg
+        mirrorImg = model.mirrorImg
     }
 
     fun projectM(v: Vector): Vector = v * worldMatrix

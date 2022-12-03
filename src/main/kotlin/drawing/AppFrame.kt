@@ -46,6 +46,7 @@ class AppFrame(model: Model): JFrame() {
         this.isVisible = true
 
         this.addKeyListener(KeyboardListener(this))
+        visibleModel.render()
     }
 
     fun onModelChanged(){

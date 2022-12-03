@@ -14,8 +14,10 @@ class ScreenModel(model: WorldModel): Model() {
     init {
         for (vert in model.v) {
             var newbie = vert * cameraMatrix
+            val w = newbie.w
             newbie /= newbie.w
             newbie *= viewportMatrix
+            newbie.w = w
             v += newbie
         }
 
@@ -31,6 +33,10 @@ class ScreenModel(model: WorldModel): Model() {
 
         for (_f in model.f)
             f += _f
+
+        textureImg = model.textureImg
+        normalImg = model.normalImg
+        mirrorImg = model.mirrorImg
     }
 
     fun projectW(v: Vector): Vector{
@@ -40,7 +46,25 @@ class ScreenModel(model: WorldModel): Model() {
         return newbie
     }
 
-    fun calcBarycentricCoords(num: Int, x: Double, y: Double): Vector{
+    fun calcTextureCoords(num: Int, x: Double, y: Double): Vector{
+        val barCoords = calcBarycentricCoords(num, x, y)
+        val corn = arrayOf(
+            f[num][0],
+            f[num][1],
+            f[num][2]
+        )
+        val resx = vt[corn[0].vtNum].x/v[corn[0].vNum].w * barCoords.x +
+                vt[corn[1].vtNum].x/v[corn[1].vNum].w * barCoords.y +
+                vt[corn[2].vtNum].x/v[corn[2].vNum].w * barCoords.z
+        val resy = vt[corn[0].vtNum].y/v[corn[0].vNum].w * barCoords.x +
+                vt[corn[1].vtNum].y/v[corn[1].vNum].w * barCoords.y +
+                vt[corn[2].vtNum].y/v[corn[2].vNum].w * barCoords.z
+        val resx1 = 1/v[corn[0].vNum].w * barCoords.x + 1/v[corn[1].vNum].w * barCoords.y + 1/v[corn[2].vNum].w * barCoords.z
+        val resy1 = 1/v[corn[0].vNum].w * barCoords.x + 1/v[corn[1].vNum].w * barCoords.y + 1/v[corn[2].vNum].w * barCoords.z
+        return Vector(resx/resx1 * (textureImg.width-1), (1-resy/resy1) * (textureImg.height-1))
+    }
+
+    private fun calcBarycentricCoords(num: Int, x: Double, y: Double): Vector{
         val verts = arrayOf(
             v[f[num][0].vNum],
             v[f[num][1].vNum],

@@ -1,9 +1,14 @@
 package util
 
+import MIRROR
+import NORMAL
+import TEXTURE
 import logic.entity.math.Vector
 import logic.entity.model.Model
 import java.io.BufferedReader
+import java.io.File
 import java.io.FileReader
+import javax.imageio.ImageIO
 
 class ModelLoader {
     fun load(path: String): Model{
@@ -12,6 +17,10 @@ class ModelLoader {
         val reader = BufferedReader(FileReader(path))
         val lines = reader.readLines()
         fillByLines(lines, model)
+
+        model.textureImg = ImageIO.read(File(TEXTURE))
+        model.normalImg = ImageIO.read(File(NORMAL))
+        model.mirrorImg = ImageIO.read(File(MIRROR))
 
         return model
     }
@@ -42,7 +51,7 @@ class ModelLoader {
                 "vt" -> {
                     var args = line.split(" ")
                     args = args.subList(1, args.size)
-                    model.vt += getAvailableData(args)
+                    model.vt += Vector(args[0].toDouble(), args[1].toDouble())
                 }
                 "vn" -> {
                     val args = line.split(" ")

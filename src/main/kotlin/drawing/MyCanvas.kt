@@ -14,7 +14,7 @@ import kotlin.math.max
 import kotlin.math.round
 
 class MyCanvas: Canvas(){
-    private var zBuffer = ArrayList<Array<Double>>()
+    private var zBuffer = Array(frameHeight){ Array(frameWidth){Double.POSITIVE_INFINITY} }
     private var image = BufferedImage(frameWidth, frameHeight, BufferedImage.TYPE_INT_RGB)
 
     override fun paint(g: Graphics) {
@@ -28,9 +28,7 @@ class MyCanvas: Canvas(){
         graphics.paint = Color(0, 0, 0)
         graphics.fillRect(0, 0, image.width, image.height)
 
-        zBuffer = ArrayList()  //clear z-buffer
-        for (i in 0 until frameHeight)
-            zBuffer += Array(frameWidth){Double.POSITIVE_INFINITY}
+        zBuffer = Array(frameHeight){ Array(frameWidth){Double.POSITIVE_INFINITY} }
     }
 
     fun ddaLine(x1: Double, y1: Double, x2: Double, y2: Double, color: Color = Color.WHITE){
@@ -106,6 +104,8 @@ class MyCanvas: Canvas(){
         for (X in xl..xr)
             if (0 <= X && X <image.width && 0 <= Y && Y <image.height) {
                 nz = zl + (zr - zl) * ((X - xl.toDouble()) / (xr - xl))
+                if (zBuffer.size < frameHeight)
+                    Thread.sleep(20)
                 if (zBuffer[X][Y] > nz) {
                     val color = colorFun(X.toDouble(), Y.toDouble())
 

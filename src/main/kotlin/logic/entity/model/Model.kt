@@ -1,8 +1,8 @@
 package logic.entity.model
 
 import logic.entity.math.Vector
-import java.io.BufferedReader
-import java.io.FileReader
+import java.awt.Color
+import java.awt.image.BufferedImage
 
 /**
  *  for blender export forward - Z forward, up - Y up
@@ -12,6 +12,9 @@ open class Model {
     var vt = ArrayList<Vector>()  //вершина текстуры
     var vn = ArrayList<Vector>()  //вершина нормали
     var f = ArrayList<ArrayList<Corner>>()
+    lateinit var textureImg: BufferedImage
+    lateinit var normalImg: BufferedImage
+    lateinit var mirrorImg: BufferedImage
 
     fun calcPlaneNormal(num: Int): Vector{
         val verts = arrayListOf(
@@ -31,11 +34,13 @@ open class Model {
         return Vector(x, y, z)
     }
 
-    fun calcDotNormal(num: Int, barCoords: Vector): Vector{
-        val resx = vn[f[num][0].vnNum].x * barCoords.x + vn[f[num][1].vnNum].x * barCoords.y + vn[f[num][2].vnNum].x * barCoords.z
-        val resy = vn[f[num][0].vnNum].y * barCoords.x + vn[f[num][1].vnNum].y * barCoords.y + vn[f[num][2].vnNum].y * barCoords.z
-        val resz = vn[f[num][0].vnNum].z * barCoords.x + vn[f[num][1].vnNum].z * barCoords.y + vn[f[num][2].vnNum].z * barCoords.z
-        return Vector(resx, resy, resz)
+    fun calcDotNormal(textureCoords: Vector): Vector{
+        val pixel = Color(normalImg.getRGB(textureCoords.x.toInt(), textureCoords.y.toInt()))
+        return Vector(pixel.red/255.0 *2 - 1, pixel.green/255.0 *2 - 1, pixel.blue/255.0 *2 - 1)
+    }
+
+    fun calcTextureColor(textureCoords: Vector): Color{
+        return Color(textureImg.getRGB(textureCoords.x.toInt(), textureCoords.y.toInt()))
     }
 
     fun calcPlaneMid(num: Int): Vector{
@@ -49,6 +54,18 @@ open class Model {
         val z = arrayListOf(verts[0].z, verts[1].z, verts[2].z)
 
         return Vector(x.sum()/3, y.sum()/3, z.sum()/3)
+    }
+
+    fun sortVerts(num: Int): ArrayList<Int>{
+        val res = arrayListOf(0, 1, 2)
+        for (i in 0..2)
+            for (j in i..2)
+                if (v[f[num][res[i]].vNum].y > v[f[num][res[j]].vNum].y){
+                    val z = res[i]
+                    res[i] = res[j]
+                    res[j] = z
+                }
+        return res
     }
 
     data class Corner(val vNum: Int, val vtNum: Int, val vnNum: Int)
