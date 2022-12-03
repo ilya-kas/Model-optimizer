@@ -1,9 +1,10 @@
 import drawing.AppFrame
 import logic.entity.math.Vector
 import logic.entity.model.Model
+import util.ModelLoader
 
 fun main(){
-    val model = Model(FILE)
+    val model = ModelLoader().load(FILE)
     /*val model = Model(
         arrayListOf(
             Vector(),

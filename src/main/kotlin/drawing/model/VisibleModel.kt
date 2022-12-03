@@ -1,140 +1,146 @@
 package drawing.model
 
+import AMBIENT
+import DIFFUSE
+import SPECULAR
 import drawing.MyCanvas
-import drawing.frameHeight
-import drawing.frameWidth
-import logic.entity.math.Matrix
-import logic.entity.math.Vector
+import logic.entity.currentLight
 import logic.entity.math.ScreenDot
+import logic.entity.math.Vector
 import logic.entity.model.Model
-import logic.entity.model.Plane
+import logic.entity.model.ScreenModel
+import logic.entity.model.WorldModel
 import java.awt.Color
-import kotlin.math.abs
 
-var showGrid = true
-var showNormals = false
+var showGrid = false
+var showCornersNormals = false
+var showMidNormal = false
+var showNormalMap = false
+var showBarCoordsMap = false
 
 class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
-    private var worldMatrix = WorldManager.getWorldMatrix()
-    private var presentedWorldMatrix = Camera.getCameraMatrix() * worldMatrix
-    private var viewportMatrix = Matrix.getViewportMatrix(frameWidth.toDouble(), frameHeight.toDouble())
+    private var worldModel = WorldModel(model)
+    private var screenModel = ScreenModel(worldModel)
 
     fun render(){
-        worldMatrix = WorldManager.getWorldMatrix()
-        presentedWorldMatrix = Camera.getCameraMatrix() * worldMatrix
-        viewportMatrix = Matrix.getViewportMatrix(frameWidth.toDouble(), frameHeight.toDouble())
-
-        val vertices = ArrayList<Vector>()
-        for (v in model.v) {
-            var newbie = v * presentedWorldMatrix
-            newbie /= newbie.w
-            newbie *= viewportMatrix
-            vertices += newbie
-            //println("${newbie.x} ${newbie.y} ${newbie.z} ${newbie.w}")
-        }
-        val planes = ArrayList<Plane>()
-        for (plane in model.f){
-            val v1 = vertices[plane[0].x.toInt()]
-            val v2 = vertices[plane[1].x.toInt()]
-            val v3 = vertices[plane[2].x.toInt()]
-            planes += Plane(listOf(v1, v2, v3), planes.size)
-        }
+        worldModel = WorldModel(model)
+        screenModel = ScreenModel(worldModel)
 
         canvas.clear()
-        for (plane in planes) {
-            fillPlane(plane)
-            if (showNormals)
-                showNormal(plane)
+        for (i in 0 until model.f.size)
+            fillPlane(i)
+
+        if (showGrid) println("сетка рёбер")
+        if (showCornersNormals) println("vn в углах плоскостей")
+        if (showMidNormal) println("нормаль в центре плоскости")
+        if (showNormalMap) println("карта нормалей")
+        if (showBarCoordsMap) println("карта координат точки в барицентрических координатах")
+        println("------------")
+    }
+
+    private fun showNormals(num: Int){
+        if (showCornersNormals){
+            val cornerNormals = arrayOf(
+                worldModel.vn[model.f[num][0].vnNum].normalized(),
+                worldModel.vn[model.f[num][1].vnNum].normalized(),
+                worldModel.vn[model.f[num][2].vnNum].normalized()
+            )
+            canvas.drawVectorW(cornerNormals[0], worldModel.v[model.f[num][0].vNum], Color.RED)
+            canvas.drawVectorW(cornerNormals[1], worldModel.v[model.f[num][1].vNum], Color.RED)
+            canvas.drawVectorW(cornerNormals[2], worldModel.v[model.f[num][2].vNum], Color.RED)
         }
-        if (showGrid)
-            for (plane in planes) {
-                canvas.ddaLine(plane.x[0], plane.y[0], plane.x[1], plane.y[1])
-                canvas.ddaLine(plane.x[0], plane.y[0], plane.x[2], plane.y[2])
-                canvas.ddaLine(plane.x[2], plane.y[2], plane.x[1], plane.y[1])
+
+        if (showMidNormal){
+            val mid = screenModel.calcPlaneMid(num)
+            val normal = worldModel.calcDotNormal(num, screenModel.calcBarycentricCoords(num, mid.x, mid.y)).normalized()
+            if (num == 0) {
+                println(normal)
+                println(worldModel.calcPlaneNormal(num).normalized())
             }
+            canvas.drawVectorW(normal, worldModel.calcPlaneMid(num), Color.RED)
+        }
     }
 
-    /**
-     * _plane - projected plane
-     */
-    private fun showNormal(_plane: Plane){
-        val projectedVerts = getProjectedPlane(model.f[_plane.num])
-        val plane = Plane(projectedVerts, _plane.num)
-        canvas.drawVector(calcNormal(model.f[_plane.num]).normalized(), plane.getMid(), Color.RED)
+    private fun drawGrid(num: Int){
+        val c1 = screenModel.v[model.f[num][0].vNum]
+        val c2 = screenModel.v[model.f[num][1].vNum]
+        val c3 = screenModel.v[model.f[num][2].vNum]
+        canvas.ddaLine(c1.x, c1.y, c2.x, c2.y)
+        canvas.ddaLine(c1.x, c1.y, c3.x, c3.y)
+        canvas.ddaLine(c2.x, c2.y, c3.x, c3.y)
     }
 
-    /**
-     * plane - model plane
-     */
-    private fun getProjectedPlane(plane: List<Vector>): List<Vector>{
-        val verts = arrayListOf(
-            model.v[plane[0].x.toInt()],
-            model.v[plane[1].x.toInt()],
-            model.v[plane[2].x.toInt()]
-        )
-        val projectedVerts = ArrayList<Vector>()
-        for (i in 0..2)
-            projectedVerts += verts[i] * worldMatrix
-        return projectedVerts
-    }
-
-    /**
-     * plane - model plane
-     */
-    private fun calcNormal(plane: List<Vector>): Vector {
-        val projectedVerts = getProjectedPlane(plane)
-
-        val ribs = arrayOf(
-            Vector(1.0, -1.0, 1.0),
-            projectedVerts[1] - projectedVerts[0],
-            projectedVerts[2] - projectedVerts[0]
-        )
-        val x = ribs[0].x * (ribs[1].y * ribs[2].z - ribs[1].z * ribs[2].y)
-        val y = ribs[0].y * (ribs[1].x * ribs[2].z - ribs[1].z * ribs[2].x)
-        val z = ribs[0].z * (ribs[1].x * ribs[2].y - ribs[1].y * ribs[2].x)
-        val res = Vector(x, y, z)
-
-        /*println(projectedVerts[0])
-        println(projectedVerts[1])
-        println(projectedVerts[2])
-        println(res)*/
-        return res
-    }
-
-    /**
-     * plane - projected plane
-     */
-    private fun isPlaneInvisible(plane: Plane): Boolean{
-        val normal = calcNormal(model.f[plane.num])
-        val corner = getProjectedPlane(model.f[plane.num])[0]
+    private fun isPlaneInvisible(num: Int): Boolean {
+        val normal = worldModel.calcPlaneNormal(num)
+        val corner = worldModel.v[model.f[num][0].vNum]
         val eye = currentCamera - corner
-        val res = eye.scalarMul(normal) <= 0
-        //println(eye.scalarMul(normal))
-        return res
+        return eye.scalarMul(normal) <= 0
     }
 
-    /**
-     * plane - projected plane
-     */
-    private fun getLightMultiplier(plane: Plane): Double {
+    private fun getLightMultiplier(num: Int, barCoords: Vector): Float {
+        val ambient = AMBIENT
+
         val ray = currentLight.normalized()
-        val normal = calcNormal(model.f[plane.num]).normalized()
-        val res = ray.scalarMul(normal)
+        val normal = worldModel.calcDotNormal(num, barCoords).normalized()
+        //val normal = worldModel.calcPlaneNormal(num).normalized()
+        val diffuse = DIFFUSE * ray.scalarMul(normal).coerceAtLeast(0.0).toFloat()
+
+        val reflected = ((ray - normal * (2 * ray.scalarMul(normal))) * -1.0).normalized()
+        val eye = (currentCamera - currentTarget).normalized()
+        val specular = reflected.scalarMul(eye).coerceAtLeast(0.0).toFloat() * SPECULAR
+
+        return ambient + diffuse + specular
+    }
+
+    private fun sortVerts(num: Int): ArrayList<Int>{
+        val res = arrayListOf(0, 1, 2)
+        for (i in 0..2)
+            for (j in i..2)
+                if (screenModel.v[model.f[num][res[i]].vNum].y > screenModel.v[model.f[num][res[j]].vNum].y){
+                    val z = res[i]
+                    res[i] = res[j]
+                    res[j] = z
+                }
         return res
     }
 
-    /**
-     * plane - projected plane
-     */
-    private fun fillPlane(plane: Plane){
-        if (isPlaneInvisible(plane))
+    private fun getColorByCoordsS(num: Int, x: Double, y: Double): Color{
+        val barycentric = screenModel.calcBarycentricCoords(num, x, y)
+        val mult = getLightMultiplier(num, barycentric)
+        if (showNormalMap) {
+            val normal = worldModel.calcDotNormal(num, barycentric).normalized()
+            return Color((normal.x.toFloat() + 1) / 2, (normal.y.toFloat() + 1) / 2, (normal.z.toFloat() + 1) / 2)
+            //return Color(abs(normal.x.toFloat()), abs(normal.y.toFloat()), abs(normal.z.toFloat()))
+        } else if (showBarCoordsMap) {
+            return Color(barycentric.x.toFloat(), barycentric.y.toFloat(), barycentric.z.toFloat())
+        } else {
+            return Color(mult,mult,mult)
+        }
+    }
+
+    private fun fillPlane(num: Int){
+        if (isPlaneInvisible(num))
             return
-        plane.sort()
+        val nums = sortVerts(num)
 
-        val lightMultiplier = (getLightMultiplier(plane) * 0.5 + 0.5).toFloat()
-        val color = Color(lightMultiplier,lightMultiplier,lightMultiplier)
+        val verts = arrayOf(
+            screenModel.v[model.f[num][nums[0]].vNum],
+            screenModel.v[model.f[num][nums[1]].vNum],
+            screenModel.v[model.f[num][nums[2]].vNum]
+        )
+        canvas.fillTopTriangle(ScreenDot(verts[0]),
+                                ScreenDot(verts[1]),
+                                ScreenDot(verts[2])){ x: Double, y: Double ->
+            return@fillTopTriangle getColorByCoordsS(num, x, y)
+        }
+        canvas.fillBottomTriangle(ScreenDot(verts[0]),
+                                    ScreenDot(verts[1]),
+                                    ScreenDot(verts[2])){ x: Double, y: Double ->
+            return@fillBottomTriangle getColorByCoordsS(num, x, y)
+        }
 
-        canvas.fillTopTriangle(ScreenDot(plane.getCorner(0)), ScreenDot(plane.getCorner(1)), ScreenDot(plane.getCorner(2)), color)
-        canvas.fillBottomTriangle(ScreenDot(plane.getCorner(0)), ScreenDot(plane.getCorner(1)), ScreenDot(plane.getCorner(2)), color)
+        showNormals(num)
+        if (showGrid)
+            drawGrid(num)
     }
 }

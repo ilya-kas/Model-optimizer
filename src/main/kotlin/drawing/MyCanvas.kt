@@ -1,7 +1,6 @@
 package drawing
 
 import drawing.model.Camera
-import drawing.model.WorldManager
 import logic.entity.math.Matrix
 import logic.entity.math.ScreenDot
 import logic.entity.math.Vector
@@ -52,7 +51,7 @@ class MyCanvas: Canvas(){
     /**
      * input - vector in World coordinates
      */
-    fun drawVector(vector: Vector, offset: Vector = Vector(), color: Color){
+    fun drawVectorW(vector: Vector, offset: Vector = Vector(), color: Color){
         val viewportMatrix = Matrix.getViewportMatrix(frameWidth.toDouble(), frameHeight.toDouble())
 
         var projectedVector = (vector + offset) * Camera.getCameraMatrix()
@@ -66,7 +65,7 @@ class MyCanvas: Canvas(){
         ddaLine(projectedOffset.x, projectedOffset.y, projectedVector.x, projectedVector.y, color)
     }
 
-    fun fillTopTriangle(a: ScreenDot, b: ScreenDot, c: ScreenDot, color: Color){
+    fun fillTopTriangle(a: ScreenDot, b: ScreenDot, c: ScreenDot, colorFun: (Double, Double) -> Color){
         var xl: Int
         var xr: Int
         var zl: Double
@@ -76,11 +75,11 @@ class MyCanvas: Canvas(){
             xr = a.x + ((c.x-a.x) * ((Y-a.y)/(c.y-a.y.toDouble()))).toInt()
             zl = a.z+ (b.z-a.z) * ((Y-a.y)/(b.y-a.y))
             zr = a.z+ (c.z-a.z) * ((Y-a.y)/(c.y-a.y))
-            fillLine(xl, xr, zl, zr, Y, color)
+            fillLine(xl, xr, zl, zr, Y, colorFun)
         }
     }
 
-    fun fillBottomTriangle(a: ScreenDot, b: ScreenDot, c: ScreenDot, color: Color){
+    fun fillBottomTriangle(a: ScreenDot, b: ScreenDot, c: ScreenDot, colorFun: (Double, Double) -> Color){
         var xl: Int
         var xr: Int
         var zl: Double
@@ -90,11 +89,11 @@ class MyCanvas: Canvas(){
             xr = a.x+ ((c.x-a.x) * ((Y-a.y)/(c.y-a.y.toDouble()))).toInt()
             zl = b.z+ (c.z-b.z) * ((Y-b.y)/(c.y-b.y))
             zr = a.z+ (c.z-a.z) * ((Y-a.y)/(c.y-a.y))
-            fillLine(xl, xr, zl, zr, Y, color)
+            fillLine(xl, xr, zl, zr, Y, colorFun)
         }
     }
 
-    private fun fillLine(_xl: Int, _xr: Int, zl: Double, zr: Double, Y: Int, color: Color){
+    private fun fillLine(_xl: Int, _xr: Int, zl: Double, zr: Double, Y: Int, colorFun: (Double, Double) -> Color){
         var nz: Double
 
         var xl = _xl
@@ -108,6 +107,8 @@ class MyCanvas: Canvas(){
             if (0 <= X && X <image.width && 0 <= Y && Y <image.height) {
                 nz = zl + (zr - zl) * ((X - xl.toDouble()) / (xr - xl))
                 if (zBuffer[X][Y] > nz) {
+                    val color = colorFun(X.toDouble(), Y.toDouble())
+
                     image.setRGB(X, Y, color.rgb)
                     zBuffer[X][Y] = nz
                 }

@@ -1,6 +1,7 @@
 package drawing
 
 import drawing.model.VisibleModel
+import logic.entity.currentLight
 import logic.entity.math.Vector
 import logic.entity.model.Model
 import java.awt.Color
@@ -50,12 +51,18 @@ class AppFrame(model: Model): JFrame() {
     fun onModelChanged(){
         visibleModel.render()
 
-        canvas.drawVector(Vector(1.0), color = Color.RED)
-        canvas.drawVector(Vector(y=1.0), color = Color.GREEN)
-        canvas.drawVector(Vector(z=1.0), color = Color.BLUE)
+        drawWorldVectors()
 
         canvas.repaint()
         this.repaint()
+    }
+
+    private fun drawWorldVectors(){
+        canvas.drawVectorW(Vector(1.0), color = Color.RED)
+        canvas.drawVectorW(Vector(y=1.0), color = Color.GREEN)
+        canvas.drawVectorW(Vector(z=1.0), color = Color.BLUE)
+
+        canvas.drawVectorW(currentLight.normalized(), color = Color.YELLOW)
     }
 }
 

@@ -7,76 +7,49 @@ import java.io.FileReader
 /**
  *  for blender export forward - Z forward, up - Y up
  */
-class Model {
+open class Model {
     var v = ArrayList<Vector>()   //вершина
     var vt = ArrayList<Vector>()  //вершина текстуры
     var vn = ArrayList<Vector>()  //вершина нормали
-    var f = ArrayList<ArrayList<Vector>>()
+    var f = ArrayList<ArrayList<Corner>>()
 
-    constructor(v: ArrayList<Vector>, vt: ArrayList<Vector>, vn: ArrayList<Vector>, f: ArrayList<ArrayList<Vector>>){
-        this.v = v;
-        this.vt = vt
-        this.vn = vn
-        this.f = f
+    fun calcPlaneNormal(num: Int): Vector{
+        val verts = arrayListOf(
+            v[f[num][0].vNum],
+            v[f[num][1].vNum],
+            v[f[num][2].vNum]
+        )
+
+        val ribs = arrayOf(
+            Vector(1.0, -1.0, 1.0),
+            verts[1] - verts[0],
+            verts[2] - verts[0]
+        )
+        val x = ribs[0].x * (ribs[1].y * ribs[2].z - ribs[1].z * ribs[2].y)
+        val y = ribs[0].y * (ribs[1].x * ribs[2].z - ribs[1].z * ribs[2].x)
+        val z = ribs[0].z * (ribs[1].x * ribs[2].y - ribs[1].y * ribs[2].x)
+        return Vector(x, y, z)
     }
 
-    constructor(path: String){
-        val reader = BufferedReader(FileReader(path))
-        val lines = reader.readLines()
-        fillByLines(lines)
+    fun calcDotNormal(num: Int, barCoords: Vector): Vector{
+        val resx = vn[f[num][0].vnNum].x * barCoords.x + vn[f[num][1].vnNum].x * barCoords.y + vn[f[num][2].vnNum].x * barCoords.z
+        val resy = vn[f[num][0].vnNum].y * barCoords.x + vn[f[num][1].vnNum].y * barCoords.y + vn[f[num][2].vnNum].y * barCoords.z
+        val resz = vn[f[num][0].vnNum].z * barCoords.x + vn[f[num][1].vnNum].z * barCoords.y + vn[f[num][2].vnNum].z * barCoords.z
+        return Vector(resx, resy, resz)
     }
 
-    private fun getAvailableData(args: List<String>): Vector{
-        if (args.size == 1)
-            return Vector(args[0].toDouble() - 1)
-        if (args.size == 2)
-            return Vector(args[0].toDouble() - 1, args[1].toDouble() - 1)
-        if (args.size == 3)
-            return Vector(
-                args[0].toDouble() - 1,
-                args[1].toDouble() - 1,
-                args[2].toDouble() - 1
-            )
-        return Vector()
+    fun calcPlaneMid(num: Int): Vector{
+        val verts = arrayListOf(
+            v[f[num][0].vNum],
+            v[f[num][1].vNum],
+            v[f[num][2].vNum]
+        )
+        val x = arrayListOf(verts[0].x, verts[1].x, verts[2].x)
+        val y = arrayListOf(verts[0].y, verts[1].y, verts[2].y)
+        val z = arrayListOf(verts[0].z, verts[1].z, verts[2].z)
+
+        return Vector(x.sum()/3, y.sum()/3, z.sum()/3)
     }
 
-    private fun fillByLines(data: List<String>){
-        for (_line in data) {
-            val line = _line.replace("  ", " ")
-            if (line.length < 2) continue
-            when (line.substring(0, 2)) {
-                "v " -> {
-                    val args = line.split(" ")
-                    v += Vector(args[1].toDouble(), args[2].toDouble(), args[3].toDouble())
-                }
-                "vt" -> {
-                    var args = line.split(" ")
-                    args = args.subList(1, args.size)
-                    vt += getAvailableData(args)
-                }
-                "vn" -> {
-                    val args = line.split(" ")
-                    vn += Vector(args[1].toDouble(), args[2].toDouble(), args[3].toDouble())
-                }
-                "f " -> {
-                    val result = ArrayList<Vector>()
-                    val args = line.split(" ")
-                    for (dot in args) {
-                        if (dot == "f") continue
-                        val values = dot.split("/").toMutableList()
-                        for (i in values.indices)
-                            if (values[i] == "")
-                                values[i] = "0"
-                        result += getAvailableData(values)
-                    }
-                    if (result.size > 3) {
-                        for (pl in 2 until result.size)
-                            f += arrayListOf(result[pl - 2], result[pl - 1], result[pl])
-                        f += arrayListOf(result[result.size-2], result[result.size-1], result[0])
-                    }else
-                        f += result
-                }
-            }
-        }
-    }
+    data class Corner(val vNum: Int, val vtNum: Int, val vnNum: Int)
 }
