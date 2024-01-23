@@ -1,12 +1,11 @@
 package drawing.model
 
+import ALPHA
 import AMBIENT
 import DIFFUSE
 import SPECULAR
 import drawing.MyCanvas
-import drawing.frameHeight
-import drawing.frameWidth
-import logic.entity.currentLight
+import logic.currentLight
 import logic.entity.math.ScreenDot
 import logic.entity.math.Vector
 import logic.entity.model.Model
@@ -53,11 +52,7 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
 
         if (showMidNormal){
             val mid = screenModel.calcPlaneMid(num)
-            val normal = worldModel.calcDotNormal(screenModel.calcTextureCoords(num, mid.x, mid.y))
-            /*if (num == 2) {
-                println(normal)
-                println(worldModel.calcPlaneNormal(num).normalized())
-            }*/
+            val normal = worldModel.projectM(model.getDotNormal(screenModel.calcTextureCoords(num, mid.x, mid.y))).normalized()
             canvas.drawVectorW(normal, worldModel.calcPlaneMid(num), Color.RED)
         }
     }
@@ -82,13 +77,16 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         val ambient = AMBIENT
 
         val ray = currentLight.normalized()
-        val normal = worldModel.calcDotNormal(textureCoords).normalized()
-        //val normal = worldModel.calcPlaneNormal(num).normalized()
+        val normal = worldModel.projectM(model.getDotNormal(textureCoords)).normalized()
         val diffuse = DIFFUSE * ray.scalarMul(normal).coerceAtLeast(0.0).toFloat()
 
         val reflected = ((ray - normal * (2 * ray.scalarMul(normal))) * -1.0).normalized()
         val eye = (currentCamera - currentTarget).normalized()
-        val specular = reflected.scalarMul(eye).coerceAtLeast(0.0).toFloat() * SPECULAR
+        val angle = reflected.scalarMul(eye).coerceAtLeast(0.0).toFloat()
+        var mult = 1f
+        for (i in 1 .. ALPHA)
+            mult *= angle
+        val specular = mult * SPECULAR
 
         return ambient + diffuse + specular
     }
@@ -97,7 +95,7 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         val textureCoords = screenModel.calcTextureCoords(num, x, y)
         val mult = getLightMultiplier(textureCoords)
         if (showNormalMap) {
-            val normal = model.calcDotNormal(textureCoords).normalized()
+            val normal = worldModel.projectM(model.getDotNormal(textureCoords)).normalized()
             return Color((normal.x.toFloat() + 1) / 2, (normal.y.toFloat() + 1) / 2, (normal.z.toFloat() + 1) / 2)
             //return Color(abs(normal.x.toFloat()), abs(normal.y.toFloat()), abs(normal.z.toFloat()))
         } else if (showBarCoordsMap) {

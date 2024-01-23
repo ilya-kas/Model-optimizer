@@ -1,6 +1,6 @@
 package logic.entity.model
 
-import logic.entity.WorldManager
+import logic.WorldManager
 import logic.entity.math.Vector
 
 class WorldModel(model: Model): Model() {

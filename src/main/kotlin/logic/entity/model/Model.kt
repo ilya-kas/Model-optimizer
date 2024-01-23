@@ -1,6 +1,7 @@
 package logic.entity.model
 
 import logic.entity.math.Vector
+import logic.entity.parts.Corner
 import java.awt.Color
 import java.awt.image.BufferedImage
 
@@ -16,27 +17,9 @@ open class Model {
     lateinit var normalImg: BufferedImage
     lateinit var mirrorImg: BufferedImage
 
-    fun calcPlaneNormal(num: Int): Vector{
-        val verts = arrayListOf(
-            v[f[num][0].vNum],
-            v[f[num][1].vNum],
-            v[f[num][2].vNum]
-        )
-
-        val ribs = arrayOf(
-            Vector(1.0, -1.0, 1.0),
-            verts[1] - verts[0],
-            verts[2] - verts[0]
-        )
-        val x = ribs[0].x * (ribs[1].y * ribs[2].z - ribs[1].z * ribs[2].y)
-        val y = ribs[0].y * (ribs[1].x * ribs[2].z - ribs[1].z * ribs[2].x)
-        val z = ribs[0].z * (ribs[1].x * ribs[2].y - ribs[1].y * ribs[2].x)
-        return Vector(x, y, z)
-    }
-
-    fun calcDotNormal(textureCoords: Vector): Vector{
+    fun getDotNormal(textureCoords: Vector): Vector{
         val pixel = Color(normalImg.getRGB(textureCoords.x.toInt(), textureCoords.y.toInt()))
-        return Vector(pixel.red/255.0 *2 - 1, pixel.green/255.0 *2 - 1, pixel.blue/255.0 *2 - 1)
+        return Vector(-1*(pixel.red/255.0 *2 - 1), pixel.green/255.0 *2 - 1, -1*(pixel.blue/255.0 *2 - 1))
     }
 
     fun calcTextureColor(textureCoords: Vector): Color{
@@ -68,5 +51,19 @@ open class Model {
         return res
     }
 
-    data class Corner(val vNum: Int, val vtNum: Int, val vnNum: Int)
+    fun calcPlaneNormal(num: Int): Vector {
+        val ribs = arrayOf(
+            Vector(1.0, -1.0, 1.0),
+            v[f[num][1].vNum] - v[f[num][0].vNum],
+            v[f[num][2].vNum] - v[f[num][0].vNum]
+        )
+        val x = ribs[0].x * (ribs[1].y * ribs[2].z - ribs[1].z * ribs[2].y)
+        val y = ribs[0].y * (ribs[1].x * ribs[2].z - ribs[1].z * ribs[2].x)
+        val z = ribs[0].z * (ribs[1].x * ribs[2].y - ribs[1].y * ribs[2].x)
+        return Vector(x, y, z)
+    }
+
+    fun addPlane(plane: List<Int>){
+        //todo
+    }
 }

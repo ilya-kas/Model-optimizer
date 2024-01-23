@@ -1,13 +1,15 @@
-package util
+package logic
 
 import MIRROR
 import NORMAL
 import TEXTURE
 import logic.entity.math.Vector
 import logic.entity.model.Model
+import logic.entity.parts.Corner
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
+import java.util.LinkedList
 import javax.imageio.ImageIO
 
 class ModelLoader {
@@ -58,7 +60,7 @@ class ModelLoader {
                     model.vn += Vector(args[1].toDouble(), args[2].toDouble(), args[3].toDouble())
                 }
                 "f " -> {
-                    val result = ArrayList<Model.Corner>()
+                    val result = ArrayList<Corner>()
                     val args = line.split(" ")
                     for (dot in args) {
                         if (dot == "f") continue
@@ -67,13 +69,14 @@ class ModelLoader {
                             if (values[i] == "")
                                 values[i] = "0"
                         val availableData = getAvailableData(values)
-                        result += Model.Corner(
+                        result += Corner(
                             availableData.x.toInt(),
                             availableData.y.toInt(),
                             availableData.z.toInt()
                         )
                     }
                     if (result.size > 3) {
+                        //todo triangulate
                         for (pl in 2 until result.size)
                             model.f += arrayListOf(result[pl - 2], result[pl - 1], result[pl])
                         model.f += arrayListOf(result[result.size-2], result[result.size-1], result[0])
@@ -81,6 +84,16 @@ class ModelLoader {
                         model.f += result
                 }
             }
+        }
+    }
+
+    companion object {
+        fun triangulate(list: List<Int>): List<List<Int>>{ //todo make ladder
+            val res = LinkedList<ArrayList<Int>>()
+            for (pl in 2 until list.size)
+                res += arrayListOf(list[pl - 2], list[pl - 1], list[pl])
+            res += arrayListOf(list[list.size-2], list[list.size-1], list[0])
+            return res
         }
     }
 }

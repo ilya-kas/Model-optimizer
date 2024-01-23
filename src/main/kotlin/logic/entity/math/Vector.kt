@@ -59,7 +59,7 @@ data class Vector(var x: Double = 0.0, var y: Double = 0.0, var z: Double = 0.0,
 
     fun length(): Double = sqrt(x * x + y * y + z * z)
 
-    fun toList(): List<Double>{
-        return listOf(x,y,z,w)
-    }
+    fun toList(): List<Double> = listOf(x,y,z,w)
+
+    fun angleTo(other: Vector): Double = scalarMul(other)/(length() * other.length())
 }

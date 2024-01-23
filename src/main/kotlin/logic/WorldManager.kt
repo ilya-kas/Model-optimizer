@@ -1,4 +1,4 @@
-package logic.entity
+package logic
 
 import SCALE
 import logic.entity.math.Matrix

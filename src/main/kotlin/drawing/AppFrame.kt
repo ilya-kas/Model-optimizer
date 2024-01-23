@@ -1,7 +1,7 @@
 package drawing
 
 import drawing.model.VisibleModel
-import logic.entity.currentLight
+import logic.currentLight
 import logic.entity.math.Vector
 import logic.entity.model.Model
 import java.awt.Color
@@ -11,8 +11,8 @@ import java.awt.event.ComponentEvent
 import javax.swing.JFrame
 import kotlin.math.PI
 
-var frameWidth = 600
-var frameHeight = 600
+var frameWidth = 700
+var frameHeight = 700
 const val zNear = 0.1
 const val zFar = 100.0
 const val fov = PI/3

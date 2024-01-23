@@ -13,3 +13,4 @@ const val MOVEMENT_STEP = 1.0
 const val AMBIENT = 0.3f
 const val DIFFUSE = 0.3f
 const val SPECULAR = 0.4f
+const val ALPHA = 4

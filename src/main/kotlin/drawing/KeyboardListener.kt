@@ -3,8 +3,8 @@ package drawing
 import drawing.model.*
 import MOVEMENT_STEP
 import ROTATION_STEP
-import logic.entity.currentAngle
-import logic.entity.currentPosition
+import logic.currentAngle
+import logic.currentPosition
 import java.awt.event.KeyEvent
 import java.awt.event.KeyListener
 
