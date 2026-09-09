@@ -1,0 +1,35 @@
+# Compiled output
+out/
+build/
+bin/
+*.class
+*.jar
+*.war
+*.ear
+*.kotlin_module
+
+# Kotlin / JVM
+.kotlin/
+
+# IntelliJ IDEA — user-specific
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries/
+.idea/shelf/
+.idea/httpRequests/
+.idea/dataSources/
+.idea/dataSources.local.xml
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Logs and temp
+*.log
+*.tmp
+*.swp
+*~
