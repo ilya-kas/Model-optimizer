@@ -86,8 +86,8 @@ class ModelLoader {
     }
 
     companion object {
-        fun triangulate(list: List<Int>): List<List<Int>>{
-            val res = LinkedList<ArrayList<Int>>()
+        fun <T> triangulate(list: List<T>): List<List<T>>{
+            val res = LinkedList<ArrayList<T>>()
             for (i in 1 until list.size - 1)
                 res += arrayListOf(list[0], list[i], list[i + 1])
             return res

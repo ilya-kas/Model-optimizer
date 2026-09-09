@@ -29,13 +29,6 @@ class Matrix(rows: Int = 0, columns: Int = 0) {
         return res
     }
 
-    override fun toString(): String {
-        val builder = java.lang.StringBuilder()
-        for (row in values)
-            builder.append(row.toString()).append("\n")
-        return builder.toString()
-    }
-
     companion object {
         fun getTranslationMatrix(translation: Vector): Matrix {
             return Matrix(4, 4).apply {
@@ -101,15 +94,6 @@ class Matrix(rows: Int = 0, columns: Int = 0) {
                 values[1] = arrayListOf(0.0, 2 / height, 0.0, 0.0)
                 values[2] = arrayListOf(0.0, 0.0, 1 / (zNear - zFar), zNear / (zNear - zFar))
                 values[3] = arrayListOf(0.0, 0.0, 0.0, 1.0)
-            }
-        }
-
-        fun getPerspectiveCamMatrix(width: Double, height: Double, zNear: Double, zFar: Double): Matrix {
-            return Matrix(4, 4).apply {
-                values[0] = arrayListOf(2 * zNear / width, 0.0, 0.0, 0.0)
-                values[1] = arrayListOf(0.0, 2 * zNear / height, 0.0, 0.0)
-                values[2] = arrayListOf(0.0, 0.0, zFar / (zNear - zFar), zNear * zFar / (zNear - zFar))
-                values[3] = arrayListOf(0.0, 0.0, -1.0, 0.0)
             }
         }
 

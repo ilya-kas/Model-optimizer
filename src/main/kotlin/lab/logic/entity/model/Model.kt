@@ -63,7 +63,24 @@ open class Model {
         return Vector(x, y, z)
     }
 
-    fun addPlane(plane: List<Int>){
-        //todo
+    fun addPlane(plane: List<Corner>){
+        if (plane.size != 3) return
+        val a = plane[0]
+        val b = plane[1]
+        val c = plane[2]
+        if (a.vNum == b.vNum || b.vNum == c.vNum || a.vNum == c.vNum) return
+        if (a.vNum !in v.indices || b.vNum !in v.indices || c.vNum !in v.indices) return
+        val area = (v[b.vNum] - v[a.vNum]) * (v[c.vNum] - v[a.vNum])
+        if (area.length() == 0.0) return
+        f += arrayListOf(a, b, c)
+    }
+
+    fun removeVertex(index: Int){
+        if (index !in v.indices) return
+        v.removeAt(index)
+        for (face in f)
+            for (i in face.indices)
+                if (face[i].vNum > index)
+                    face[i] = face[i].copy(vNum = face[i].vNum - 1)
     }
 }
