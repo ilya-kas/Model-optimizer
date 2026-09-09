@@ -3,7 +3,7 @@ package lab.logic
 import lab.logic.entity.model.Model
 import lab.logic.entity.parts.Corner
 
-object ModelOptimizer {
+object PlanesAngleOptimizer {
     /**
      * accuracy: 0 - all collapse, 1 - all stay
      * maxNodes: how many nodes can be removed. if 0 - then all over accuracy limit

@@ -1,9 +1,11 @@
 import lab.drawing.AppFrame
 import lab.logic.ModelLoader
-import lab.logic.ModelOptimizer
+import lab.logic.PlaneAreaOptimizer
+import lab.logic.PlanesAngleOptimizer
 
 fun main(){
     val model = ModelLoader().load(FILE)
-    ModelOptimizer.optimize(model, 0.95)
+    PlanesAngleOptimizer.optimize(model, 0.95)
+    PlaneAreaOptimizer.optimize(model, 0.95)
     AppFrame(model)
 }
