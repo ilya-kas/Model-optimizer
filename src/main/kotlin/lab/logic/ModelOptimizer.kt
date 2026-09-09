@@ -2,7 +2,6 @@ package lab.logic
 
 import lab.logic.entity.model.Model
 import lab.logic.entity.parts.Corner
-import java.util.LinkedList
 
 object ModelOptimizer {
     /**
@@ -18,14 +17,22 @@ object ModelOptimizer {
         println("optimize start: $vertsBefore vertices, $facesBefore planes, accuracy=$accuracy")
 
         var connectionList = findConnections(model)
-        var (node, error) = findBestNode(model, connectionList)
+        var errors = DoubleArray(model.v.size) { findError(it, model, connectionList) }
+        var (node, error) = findBestNode(errors)
         var nodesRemoved = 0L
         while (error >= accuracy && (maxNodes == 0L || nodesRemoved < maxNodes)){
+            val neighbors = neighborVertices(node, model, connectionList)
             val facesNow = model.f.size
             val vertsNow = model.v.size
             removeNode(node, model, connectionList)
 
-            if (model.f.size == facesNow && model.v.size == vertsNow) break
+            if (model.f.size == facesNow && model.v.size == vertsNow) {
+                errors[node] = Double.NEGATIVE_INFINITY
+                val pair = findBestNode(errors)
+                node = pair.first
+                error = pair.second
+                continue
+            }
 
             nodesRemoved++
             if (nodesRemoved % 100L == 0L) {
@@ -33,35 +40,61 @@ object ModelOptimizer {
             }
 
             connectionList = findConnections(model)
-            val pair = findBestNode(model, connectionList)
+            errors = dropIndex(errors, node)
+            for (n in neighbors) {
+                val mapped = if (n > node) n - 1 else n
+                if (mapped in errors.indices)
+                    errors[mapped] = findError(mapped, model, connectionList)
+            }
+
+            val pair = findBestNode(errors)
             node = pair.first
             error = pair.second
         }
 
-        println("optimize done: removed ${nodesRemoved/model.v.size*100}% of vertices")
+        println("optimize done: removed $nodesRemoved vertices")
         println("vertices: $vertsBefore -> ${model.v.size}")
         println("planes: $facesBefore -> ${model.f.size}")
     }
 
-    private fun findBestNode(model: Model, connectionList: List<List<Int>>): Pair<Int, Double>{
+    private fun findBestNode(errors: DoubleArray): Pair<Int, Double>{
         var bestNum = 0
-        var bestError = findError(bestNum, model, connectionList)
-        for (i in 1 until model.v.size){
-            val error = findError(i, model, connectionList)
-            if (error > bestError){
+        var bestError = errors[0]
+        for (i in 1 until errors.size){
+            if (errors[i] > bestError){
                 bestNum = i
-                bestError = error
+                bestError = errors[i]
             }
         }
         return bestNum to bestError
     }
 
+    private fun dropIndex(errors: DoubleArray, removed: Int): DoubleArray{
+        val next = DoubleArray(errors.size - 1)
+        for (i in 0 until removed)
+            next[i] = errors[i]
+        for (i in removed + 1 until errors.size)
+            next[i - 1] = errors[i]
+        return next
+    }
+
+    private fun neighborVertices(node: Int, model: Model, connectionList: List<List<Int>>): Set<Int>{
+        val res = HashSet<Int>()
+        for (plane in connectionList.getOrNull(node) ?: return res) {
+            val face = model.f.getOrNull(plane) ?: continue
+            for (corner in face)
+                if (corner.vNum != node)
+                    res += corner.vNum
+        }
+        return res
+    }
+
     private fun findConnections(model: Model): List<List<Int>>{
-        val res = ArrayList<LinkedList<Int>>(model.v.size)
-        repeat(model.v.size) { res += LinkedList<Int>() }
+        val res = ArrayList<ArrayList<Int>>(model.v.size)
+        repeat(model.v.size) { res += ArrayList<Int>() }
         for (plane in model.f.indices)
             for (corner in model.f[plane])
-                if (corner.vNum in res.indices)
+                if (corner.vNum in res.indices && plane !in res[corner.vNum])
                     res[corner.vNum] += plane
         return res
     }
@@ -69,7 +102,7 @@ object ModelOptimizer {
     private fun findError(node: Int, model: Model, connectionList: List<List<Int>>): Double{
         if (!canCollapse(node, model, connectionList)) return Double.NEGATIVE_INFINITY
 
-        val connections = connectionList[node].distinct()
+        val connections = connectionList[node]
         val faceNormals = connections.map { model.calcPlaneNormal(it) }.filter { it.length() > 0.0 }
         if (faceNormals.isEmpty()) return Double.NEGATIVE_INFINITY
 
@@ -84,7 +117,7 @@ object ModelOptimizer {
     }
 
     private fun canCollapse(node: Int, model: Model, connectionList: List<List<Int>>): Boolean{
-        val planes = connectionList.getOrNull(node)?.distinct() ?: return false
+        val planes = connectionList.getOrNull(node) ?: return false
         if (planes.size < 3) return false
         val edges = planes.mapNotNull { remainingEdge(model.f.getOrNull(it), node) }
         if (edges.size != planes.size) return false
@@ -93,11 +126,11 @@ object ModelOptimizer {
     }
 
     private fun removeNode(node: Int, model: Model, connectionList: List<List<Int>>){
-        val planes = connectionList[node].distinct()
+        val planes = connectionList[node]
         val preview = planes.mapNotNull { remainingEdge(model.f.getOrNull(it), node) }
         val chain = buildChain(preview, planes.size) ?: return
 
-        val pairs = LinkedList<Pair<Corner, Corner>>()
+        val pairs = ArrayList<Pair<Corner, Corner>>()
         for (plane in planes.sortedDescending())
             deletePlane(plane, model, node)?.let { pairs += it }
         if (pairs.isEmpty()) return

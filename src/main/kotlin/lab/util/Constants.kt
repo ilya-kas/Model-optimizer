@@ -1,6 +1,6 @@
 import kotlin.math.PI
 
-const val FILE = "obj/oldcar.obj"
+const val FILE = "obj/warrior.obj"
 const val TEXTURE = "color.png"
 const val NORMAL = "normal.png"
 const val MIRROR = "mirror.png"

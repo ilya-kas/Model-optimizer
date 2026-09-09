@@ -18,12 +18,24 @@ open class Model {
     lateinit var mirrorImg: BufferedImage
 
     fun getDotNormal(textureCoords: Vector): Vector{
-        val pixel = Color(normalImg.getRGB(textureCoords.x.toInt(), textureCoords.y.toInt()))
+        val pixel = sample(normalImg, textureCoords)
         return Vector(-1*(pixel.red/255.0 *2 - 1), pixel.green/255.0 *2 - 1, -1*(pixel.blue/255.0 *2 - 1))
     }
 
     fun calcTextureColor(textureCoords: Vector): Color{
-        return Color(textureImg.getRGB(textureCoords.x.toInt(), textureCoords.y.toInt()))
+        return sample(textureImg, textureCoords)
+    }
+
+    private fun sample(img: BufferedImage, textureCoords: Vector): Color {
+        val x = toTexel(textureCoords.x, textureImg.width, img.width)
+        val y = toTexel(textureCoords.y, textureImg.height, img.height)
+        return Color(img.getRGB(x, y))
+    }
+
+    private fun toTexel(coord: Double, fromSize: Int, toSize: Int): Int {
+        if (toSize <= 1 || !coord.isFinite()) return 0
+        val t = coord / (fromSize - 1).coerceAtLeast(1)
+        return (t * (toSize - 1)).toInt().coerceIn(0, toSize - 1)
     }
 
     fun calcPlaneMid(num: Int): Vector{
