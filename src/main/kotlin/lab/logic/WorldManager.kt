@@ -1,6 +1,6 @@
 package lab.logic
 
-import SCALE
+import lab.util.SCALE
 import lab.logic.entity.math.Matrix
 import lab.logic.entity.math.Vector
 

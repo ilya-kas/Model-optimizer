@@ -1,8 +1,8 @@
 package lab.logic
 
-import MIRROR
-import NORMAL
-import TEXTURE
+import lab.util.MIRROR
+import lab.util.NORMAL
+import lab.util.TEXTURE
 import lab.logic.entity.math.Vector
 import lab.logic.entity.model.Model
 import lab.logic.entity.parts.Corner
@@ -13,6 +13,34 @@ import java.util.LinkedList
 import javax.imageio.ImageIO
 
 class ModelLoader {
+    fun save(model: Model, path: String) {
+        File(path).printWriter().use { out ->
+            for (vert in model.v)
+                out.println("v ${vert.x} ${vert.y} ${vert.z}")
+            for (t in model.vt)
+                out.println("vt ${t.x} ${t.y}")
+            for (n in model.vn)
+                out.println("vn ${n.x} ${n.y} ${n.z}")
+            for (face in model.f) {
+                if (face.size < 3) continue
+                out.println("f " + face.joinToString(" ") { formatCorner(it, model) })
+            }
+        }
+        println("saved $path")
+    }
+
+    private fun formatCorner(corner: Corner, model: Model): String {
+        val v = corner.vNum + 1
+        val hasVt = corner.vtNum in model.vt.indices
+        val hasVn = corner.vnNum in model.vn.indices
+        return when {
+            hasVt && hasVn -> "$v/${corner.vtNum + 1}/${corner.vnNum + 1}"
+            hasVt -> "$v/${corner.vtNum + 1}"
+            hasVn -> "$v//${corner.vnNum + 1}"
+            else -> "$v"
+        }
+    }
+
     fun load(path: String): Model {
         val model = Model()
 

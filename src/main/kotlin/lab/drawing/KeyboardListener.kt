@@ -1,7 +1,7 @@
 package lab.drawing
 
-import MOVEMENT_STEP
-import ROTATION_STEP
+import lab.util.MOVEMENT_STEP
+import lab.util.ROTATION_STEP
 import lab.drawing.model.currentCamera
 import lab.drawing.model.showBarCoordsMap
 import lab.drawing.model.showCornersNormals

@@ -1,9 +1,9 @@
 package lab.drawing.model
 
-import ALPHA
-import AMBIENT
-import DIFFUSE
-import SPECULAR
+import lab.util.ALPHA
+import lab.util.AMBIENT
+import lab.util.DIFFUSE
+import lab.util.SPECULAR
 import lab.drawing.MyCanvas
 import lab.logic.OptimizerDebug
 import lab.logic.PlaneAreaOptimizer
@@ -51,6 +51,8 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         canvas.clear()
         for (i in 0 until model.f.size)
             fillPlane(i)
+        if (showVertexAngleMap)
+            drawVertexDots()
 
         if (showGrid) println("сетка рёбер")
         if (showCornersNormals) println("vn в углах плоскостей")
@@ -80,6 +82,15 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
                 val redWeight = (if (highValueIsGreen) 1.0 - t else t).coerceIn(0.0, 1.0)
                 Color(redWeight.toFloat(), (1.0 - redWeight).toFloat(), 0f)
             }
+        }
+    }
+
+    private fun drawVertexDots(){
+        for (i in screenModel.v.indices) {
+            val p = screenModel.v[i]
+            if (p.w <= 0.0) continue
+            val color = vertexColors.getOrElse(i) { Color.BLACK }
+            canvas.drawDot(p.x, p.y, p.z, color)
         }
     }
 
@@ -137,17 +148,6 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
     }
 
     private fun getColorByCoordsS(num: Int, x: Double, y: Double): Color{
-        if (showVertexAngleMap) {
-            val bar = screenModel.calcBarycentricCoords(num, x, y)
-            val face = model.f[num]
-            val c0 = vertexColors.getOrElse(face[0].vNum) { Color.BLACK }
-            val c1 = vertexColors.getOrElse(face[1].vNum) { Color.BLACK }
-            val c2 = vertexColors.getOrElse(face[2].vNum) { Color.BLACK }
-            val r = ((c0.red * bar.x + c1.red * bar.y + c2.red * bar.z) / 255.0).coerceIn(0.0, 1.0)
-            val g = ((c0.green * bar.x + c1.green * bar.y + c2.green * bar.z) / 255.0).coerceIn(0.0, 1.0)
-            val b = ((c0.blue * bar.x + c1.blue * bar.y + c2.blue * bar.z) / 255.0).coerceIn(0.0, 1.0)
-            return Color(r.toFloat(), g.toFloat(), b.toFloat())
-        }
         if (showPlaneAreaMap)
             return planeColors.getOrElse(num) { Color.BLACK }
 

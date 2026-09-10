@@ -63,6 +63,23 @@ class MyCanvas: Canvas(){
         ddaLine(projectedOffset.x, projectedOffset.y, projectedVector.x, projectedVector.y, color)
     }
 
+    fun drawDot(x: Double, y: Double, z: Double, color: Color, radius: Int = 2){
+        val cx = round(x).toInt()
+        val cy = round(y).toInt()
+        val nz = z - 1e-4
+        for (dy in -radius..radius)
+            for (dx in -radius..radius) {
+                val px = cx + dx
+                val py = cy + dy
+                if (px !in 0 until image.width || py !in 0 until image.height) continue
+                if (py !in zBuffer.indices || px !in zBuffer[py].indices) continue
+                if (zBuffer[py][px] > nz) {
+                    image.setRGB(px, py, color.rgb)
+                    zBuffer[py][px] = nz
+                }
+            }
+    }
+
     fun fillTopTriangle(a: ScreenDot, b: ScreenDot, c: ScreenDot, colorFun: (Double, Double) -> Color){
         var xl: Int
         var xr: Int
