@@ -44,7 +44,7 @@ object PlaneAreaOptimizer {
 
             skipped.clear()
             planesRemoved++
-            if (planesRemoved % 100L == 0L) {
+            if (planesRemoved % 1000L == 0L) {
                 println("removed $planesRemoved: ${model.v.size} vertices, ${model.f.size} planes, area=$area")
             }
         }

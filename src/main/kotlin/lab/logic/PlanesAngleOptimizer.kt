@@ -35,7 +35,7 @@ object PlanesAngleOptimizer {
             }
 
             nodesRemoved++
-            if (nodesRemoved % 100L == 0L) {
+            if (nodesRemoved % 1000L == 0L) {
                 println("removed $nodesRemoved: ${model.v.size} vertices, ${model.f.size} planes, error=$error")
             }
 
