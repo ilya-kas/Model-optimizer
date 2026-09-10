@@ -8,6 +8,8 @@ import java.awt.Color
 import java.awt.Dimension
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 import javax.swing.JFrame
 import kotlin.math.PI
 
@@ -24,6 +26,8 @@ class AppFrame(model: Model): JFrame() {
 
     init {
         this.size = Dimension(frameWidth, frameHeight)
+        canvas.isFocusable = false
+        this.isFocusable = true
         this.add(canvas)
 
         this.addComponentListener(object : ComponentAdapter() {
@@ -41,11 +45,17 @@ class AppFrame(model: Model): JFrame() {
 
             override fun componentShown(event: ComponentEvent) {
                 isVisible = true
+                requestFocus()
             }
         })
+        addWindowFocusListener(object : WindowAdapter() {
+            override fun windowGainedFocus(e: WindowEvent) {
+                requestFocus()
+            }
+        })
+        addKeyListener(KeyboardListener(this))
         this.isVisible = true
-
-        this.addKeyListener(KeyboardListener(this))
+        requestFocus()
         visibleModel.render()
     }
 

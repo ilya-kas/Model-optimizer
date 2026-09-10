@@ -90,15 +90,15 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
                 worldModel.vn[model.f[num][1].vnNum].normalized(),
                 worldModel.vn[model.f[num][2].vnNum].normalized()
             )
-            canvas.drawVectorW(cornerNormals[0], worldModel.v[model.f[num][0].vNum], Color.RED)
-            canvas.drawVectorW(cornerNormals[1], worldModel.v[model.f[num][1].vNum], Color.RED)
-            canvas.drawVectorW(cornerNormals[2], worldModel.v[model.f[num][2].vNum], Color.RED)
+            canvas.drawVectorW(cornerNormals[0] * (1.0 / 3.0), worldModel.v[model.f[num][0].vNum], Color.RED)
+            canvas.drawVectorW(cornerNormals[1] * (1.0 / 3.0), worldModel.v[model.f[num][1].vNum], Color.RED)
+            canvas.drawVectorW(cornerNormals[2] * (1.0 / 3.0), worldModel.v[model.f[num][2].vNum], Color.RED)
         }
 
         if (showMidNormal){
             val mid = screenModel.calcPlaneMid(num)
             val normal = worldModel.projectM(model.getDotNormal(screenModel.calcTextureCoords(num, mid.x, mid.y))).normalized()
-            canvas.drawVectorW(normal, worldModel.calcPlaneMid(num), Color.RED)
+            canvas.drawVectorW(normal * (1.0 / 3.0), worldModel.calcPlaneMid(num), Color.RED)
         }
     }
 
