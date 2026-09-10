@@ -8,6 +8,8 @@ import lab.drawing.model.showCornersNormals
 import lab.drawing.model.showGrid
 import lab.drawing.model.showMidNormal
 import lab.drawing.model.showNormalMap
+import lab.drawing.model.showPlaneAreaMap
+import lab.drawing.model.showVertexAngleMap
 import lab.logic.currentAngle
 import lab.logic.currentPosition
 import java.awt.event.KeyEvent
@@ -41,6 +43,9 @@ class KeyboardListener(private val frame: AppFrame) : KeyListener {
             // normal map visualization
             KeyEvent.VK_T,
             KeyEvent.VK_G -> handleTexture(e.keyCode)
+
+            KeyEvent.VK_Y,
+            KeyEvent.VK_H -> handleOptimizerMaps(e.keyCode)
         }
     }
 
@@ -93,12 +98,43 @@ class KeyboardListener(private val frame: AppFrame) : KeyListener {
         when (keycode){
             KeyEvent.VK_T ->{
                 showNormalMap = !showNormalMap
-                if (showNormalMap) showBarCoordsMap = false
+                if (showNormalMap) {
+                    showBarCoordsMap = false
+                    showVertexAngleMap = false
+                    showPlaneAreaMap = false
+                }
                 frame.onModelChanged()
             }
             KeyEvent.VK_G ->{
                 showBarCoordsMap = !showBarCoordsMap
-                if (showBarCoordsMap) showNormalMap = false
+                if (showBarCoordsMap) {
+                    showNormalMap = false
+                    showVertexAngleMap = false
+                    showPlaneAreaMap = false
+                }
+                frame.onModelChanged()
+            }
+        }
+    }
+
+    private fun handleOptimizerMaps(keycode: Int){
+        when (keycode){
+            KeyEvent.VK_Y ->{
+                showVertexAngleMap = !showVertexAngleMap
+                if (showVertexAngleMap) {
+                    showPlaneAreaMap = false
+                    showNormalMap = false
+                    showBarCoordsMap = false
+                }
+                frame.onModelChanged()
+            }
+            KeyEvent.VK_H ->{
+                showPlaneAreaMap = !showPlaneAreaMap
+                if (showPlaneAreaMap) {
+                    showVertexAngleMap = false
+                    showNormalMap = false
+                    showBarCoordsMap = false
+                }
                 frame.onModelChanged()
             }
         }

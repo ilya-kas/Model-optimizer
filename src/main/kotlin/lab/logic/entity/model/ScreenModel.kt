@@ -64,7 +64,7 @@ class ScreenModel(model: WorldModel): Model() {
         return Vector(resx/resx1 * (textureImg.width-1), (1-resy/resy1) * (textureImg.height-1))
     }
 
-    private fun calcBarycentricCoords(num: Int, x: Double, y: Double): Vector{
+    fun calcBarycentricCoords(num: Int, x: Double, y: Double): Vector{
         val verts = arrayOf(
             v[f[num][0].vNum],
             v[f[num][1].vNum],

@@ -6,6 +6,8 @@ import lab.logic.entity.parts.Corner
 import kotlin.math.sqrt
 
 object PlaneAreaOptimizer {
+    var lastAngleAccuracy = 0.95
+        private set
     /**
      * accuracy: 0 - all collapse, 1 - all stay (area)
      * angleAccuracy: 0 - all collapse, 1 - all stay (same metric as PlanesAngleOptimizer)
@@ -18,6 +20,7 @@ object PlaneAreaOptimizer {
      * Remapped corners keep a single averaged vt/vn of the same UV island.
      */
     fun optimize(model: Model, accuracy: Double, angleAccuracy: Double, maxNodes: Long = 0){
+        lastAngleAccuracy = angleAccuracy
         if (model.v.isEmpty() || model.f.isEmpty()) return
 
         val vertsBefore = model.v.size
@@ -56,6 +59,15 @@ object PlaneAreaOptimizer {
         println("area optimize done: removed ${removedPercent(planesRemoved, facesBefore)}% planes")
         println("vertices: $vertsBefore -> ${model.v.size} (removed ${removedPercent((vertsBefore - model.v.size).toLong(), vertsBefore)}%)")
         println("planes: $facesBefore -> ${model.f.size} (removed ${removedPercent((facesBefore - model.f.size).toLong(), facesBefore)}%)")
+    }
+
+    fun debugPlanes(model: Model, angleAccuracy: Double = lastAngleAccuracy): Array<OptimizerDebug> {
+        val connectionList = model.findConnections()
+        return Array(model.f.size) { plane ->
+            val blocked = !canCollapse(plane, model, connectionList, angleAccuracy)
+            val value = if (blocked) Double.NaN else planeArea(model, plane)
+            OptimizerDebug(blocked, value)
+        }
     }
 
     private fun findBestPlane(model: Model, skipped: Set<Int>, angleAccuracy: Double): Pair<Int, Double>{

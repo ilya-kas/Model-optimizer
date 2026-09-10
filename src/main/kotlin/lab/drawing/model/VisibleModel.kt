@@ -5,6 +5,9 @@ import AMBIENT
 import DIFFUSE
 import SPECULAR
 import lab.drawing.MyCanvas
+import lab.logic.OptimizerDebug
+import lab.logic.PlaneAreaOptimizer
+import lab.logic.PlanesAngleOptimizer
 import lab.logic.currentLight
 import lab.logic.entity.math.ScreenDot
 import lab.logic.entity.math.Vector
@@ -18,14 +21,32 @@ var showCornersNormals = false
 var showMidNormal = false
 var showNormalMap = false
 var showBarCoordsMap = false
+var showVertexAngleMap = false
+var showPlaneAreaMap = false
 
 class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
     private var worldModel = WorldModel(model)
     private var screenModel = ScreenModel(worldModel)
+    private var vertexColors: Array<Color> = emptyArray()
+    private var planeColors: Array<Color> = emptyArray()
+    private var vertexColorsReady = false
+    private var planeColorsReady = false
 
     fun render(){
         worldModel = WorldModel(model)
         screenModel = ScreenModel(worldModel)
+        if (showVertexAngleMap) {
+            if (!vertexColorsReady) {
+                vertexColors = heatColors(PlanesAngleOptimizer.debugVertices(model), highValueIsGreen = true)
+                vertexColorsReady = true
+            }
+        } else vertexColorsReady = false
+        if (showPlaneAreaMap) {
+            if (!planeColorsReady) {
+                planeColors = heatColors(PlaneAreaOptimizer.debugPlanes(model), highValueIsGreen = false)
+                planeColorsReady = true
+            }
+        } else planeColorsReady = false
 
         canvas.clear()
         for (i in 0 until model.f.size)
@@ -36,7 +57,30 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
         if (showMidNormal) println("нормаль в центре плоскости")
         if (showNormalMap) println("карта нормалей")
         if (showBarCoordsMap) println("карта координат точки в текстурных координатах")
+        if (showVertexAngleMap) println("карта углов вершин (Y): зелёный — малый угол, красный — большой, синий — доп. условия")
+        if (showPlaneAreaMap) println("карта площадей плоскостей (H): зелёный — малая площадь, красный — большая, синий — доп. условия")
         println("------------")
+    }
+
+    private fun heatColors(debug: Array<OptimizerDebug>, highValueIsGreen: Boolean): Array<Color> {
+        val blocked = Color(0f, 0f, 1f)
+        var min = Double.POSITIVE_INFINITY
+        var max = Double.NEGATIVE_INFINITY
+        for (item in debug) {
+            if (item.extraBlocked || !item.value.isFinite()) continue
+            if (item.value < min) min = item.value
+            if (item.value > max) max = item.value
+        }
+        return Array(debug.size) { i ->
+            val item = debug[i]
+            if (item.extraBlocked || !item.value.isFinite()) blocked
+            else {
+                val t = if (!min.isFinite() || max == min) 0.5
+                else (item.value - min) / (max - min)
+                val redWeight = (if (highValueIsGreen) 1.0 - t else t).coerceIn(0.0, 1.0)
+                Color(redWeight.toFloat(), (1.0 - redWeight).toFloat(), 0f)
+            }
+        }
     }
 
     private fun showNormals(num: Int){
@@ -93,6 +137,20 @@ class VisibleModel(private val model: Model, private val canvas: MyCanvas) {
     }
 
     private fun getColorByCoordsS(num: Int, x: Double, y: Double): Color{
+        if (showVertexAngleMap) {
+            val bar = screenModel.calcBarycentricCoords(num, x, y)
+            val face = model.f[num]
+            val c0 = vertexColors.getOrElse(face[0].vNum) { Color.BLACK }
+            val c1 = vertexColors.getOrElse(face[1].vNum) { Color.BLACK }
+            val c2 = vertexColors.getOrElse(face[2].vNum) { Color.BLACK }
+            val r = ((c0.red * bar.x + c1.red * bar.y + c2.red * bar.z) / 255.0).coerceIn(0.0, 1.0)
+            val g = ((c0.green * bar.x + c1.green * bar.y + c2.green * bar.z) / 255.0).coerceIn(0.0, 1.0)
+            val b = ((c0.blue * bar.x + c1.blue * bar.y + c2.blue * bar.z) / 255.0).coerceIn(0.0, 1.0)
+            return Color(r.toFloat(), g.toFloat(), b.toFloat())
+        }
+        if (showPlaneAreaMap)
+            return planeColors.getOrElse(num) { Color.BLACK }
+
         val textureCoords = screenModel.calcTextureCoords(num, x, y)
         val mult = getLightMultiplier(textureCoords)
         if (showNormalMap) {

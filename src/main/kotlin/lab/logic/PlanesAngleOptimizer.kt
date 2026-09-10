@@ -3,6 +3,8 @@ package lab.logic
 import lab.logic.entity.model.Model
 import lab.logic.entity.parts.Corner
 
+data class OptimizerDebug(val extraBlocked: Boolean, val value: Double)
+
 object PlanesAngleOptimizer {
     /**
      * accuracy: 0 - all collapse, 1 - all stay
@@ -58,6 +60,19 @@ object PlanesAngleOptimizer {
         println("optimize done: removed ${removedPercent(nodesRemoved, vertsBefore)}% vertices")
         println("vertices: $vertsBefore -> ${model.v.size} (removed ${removedPercent((vertsBefore - model.v.size).toLong(), vertsBefore)}%)")
         println("planes: $facesBefore -> ${model.f.size} (removed ${removedPercent((facesBefore - model.f.size).toLong(), facesBefore)}%)")
+    }
+
+    fun debugVertices(model: Model): Array<OptimizerDebug> {
+        val connectionList = model.findConnections()
+        return Array(model.v.size) { node ->
+            val blocked = !canCollapse(node, model, connectionList)
+            val value = if (blocked) Double.NaN
+            else minOf(
+                model.averageNormalAlignment(node, connectionList),
+                model.minPairwiseNormalAlignment(node, connectionList)
+            )
+            OptimizerDebug(blocked, value)
+        }
     }
 
     private fun findBestNode(errors: DoubleArray): Pair<Int, Double>{
