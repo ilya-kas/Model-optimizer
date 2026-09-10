@@ -7,6 +7,9 @@ object PlanesAngleOptimizer {
     /**
      * accuracy: 0 - all collapse, 1 - all stay
      * maxNodes: how many nodes can be removed. if 0 - then all over accuracy limit
+     *
+     * Does not collapse UV seams or creases. The hole is filled from remaining
+     * corners matched by (v, vt), not by geometry alone.
      */
     fun optimize(model: Model, accuracy: Double, maxNodes: Long = 0){
         if (model.v.isEmpty()) return
@@ -16,7 +19,7 @@ object PlanesAngleOptimizer {
 
         println("optimize start: $vertsBefore vertices, $facesBefore planes, accuracy=$accuracy")
 
-        var connectionList = findConnections(model)
+        var connectionList = model.findConnections()
         var errors = DoubleArray(model.v.size) { findError(it, model, connectionList) }
         var (node, error) = findBestNode(errors)
         var nodesRemoved = 0L
@@ -39,7 +42,7 @@ object PlanesAngleOptimizer {
                 println("removed $nodesRemoved: ${model.v.size} vertices, ${model.f.size} planes, error=$error")
             }
 
-            connectionList = findConnections(model)
+            connectionList = model.findConnections()
             errors = dropIndex(errors, node)
             for (n in neighbors) {
                 val mapped = if (n > node) n - 1 else n
@@ -52,9 +55,9 @@ object PlanesAngleOptimizer {
             error = pair.second
         }
 
-        println("optimize done: removed $nodesRemoved vertices")
-        println("vertices: $vertsBefore -> ${model.v.size}")
-        println("planes: $facesBefore -> ${model.f.size}")
+        println("optimize done: removed ${removedPercent(nodesRemoved, vertsBefore)}% vertices")
+        println("vertices: $vertsBefore -> ${model.v.size} (removed ${removedPercent((vertsBefore - model.v.size).toLong(), vertsBefore)}%)")
+        println("planes: $facesBefore -> ${model.f.size} (removed ${removedPercent((facesBefore - model.f.size).toLong(), facesBefore)}%)")
     }
 
     private fun findBestNode(errors: DoubleArray): Pair<Int, Double>{
@@ -89,53 +92,40 @@ object PlanesAngleOptimizer {
         return res
     }
 
-    private fun findConnections(model: Model): List<List<Int>>{
-        val res = ArrayList<ArrayList<Int>>(model.v.size)
-        repeat(model.v.size) { res += ArrayList<Int>() }
-        for (plane in model.f.indices)
-            for (corner in model.f[plane])
-                if (corner.vNum in res.indices && plane !in res[corner.vNum])
-                    res[corner.vNum] += plane
-        return res
-    }
-
     private fun findError(node: Int, model: Model, connectionList: List<List<Int>>): Double{
         if (!canCollapse(node, model, connectionList)) return Double.NEGATIVE_INFINITY
 
-        val connections = connectionList[node]
-        val faceNormals = connections.map { model.calcPlaneNormal(it) }.filter { it.length() > 0.0 }
-        if (faceNormals.isEmpty()) return Double.NEGATIVE_INFINITY
-
-        var dotN = faceNormals.reduce { a, b -> a + b }
-        if (dotN.length() == 0.0) return Double.NEGATIVE_INFINITY
-        dotN = dotN.normalized()
-
-        var sumError = 0.0
-        for (n in faceNormals)
-            sumError += dotN.angleTo(n)
-        return sumError / faceNormals.size.toDouble()
+        val average = model.averageNormalAlignment(node, connectionList)
+        val crease = model.minPairwiseNormalAlignment(node, connectionList)
+        return minOf(average, crease)
     }
 
     private fun canCollapse(node: Int, model: Model, connectionList: List<List<Int>>): Boolean{
         val planes = connectionList.getOrNull(node) ?: return false
         if (planes.size < 3) return false
+        if (model.isVertexUvSeam(node, connectionList)) return false
         val edges = planes.mapNotNull { remainingEdge(model.f.getOrNull(it), node) }
         if (edges.size != planes.size) return false
         if (!isClosedRing(edges)) return false
-        return buildChain(edges, planes.size) != null
+        val chain = buildChain(edges, planes.size, model) ?: return false
+        val originalMax = planes.maxOf { model.uvDiameter(model.f[it]) }
+        return ModelLoader.triangulate(chain).none { model.triangleCrossesUv(it, originalMax) }
     }
 
     private fun removeNode(node: Int, model: Model, connectionList: List<List<Int>>){
         val planes = connectionList[node]
         val preview = planes.mapNotNull { remainingEdge(model.f.getOrNull(it), node) }
-        val chain = buildChain(preview, planes.size) ?: return
+        val chain = buildChain(preview, planes.size, model) ?: return
+        val originalMax = planes.maxOf { model.uvDiameter(model.f[it]) }
+        val tris = ModelLoader.triangulate(chain)
+        if (tris.any { model.triangleCrossesUv(it, originalMax) }) return
 
         val pairs = ArrayList<Pair<Corner, Corner>>()
         for (plane in planes.sortedDescending())
             deletePlane(plane, model, node)?.let { pairs += it }
         if (pairs.isEmpty()) return
 
-        for (tri in ModelLoader.triangulate(chain))
+        for (tri in tris)
             model.addPlane(tri)
 
         model.removeVertex(node)
@@ -166,7 +156,7 @@ object PlanesAngleOptimizer {
         return degree.values.all { it == 2 }
     }
 
-    private fun buildChain(pairs: List<Pair<Corner, Corner>>, expected: Int): List<Corner>?{
+    private fun buildChain(pairs: List<Pair<Corner, Corner>>, expected: Int, model: Model): List<Corner>?{
         if (pairs.isEmpty() || expected < 3) return null
 
         var prev = pairs[0].first
@@ -177,14 +167,18 @@ object PlanesAngleOptimizer {
         while (chain.size < expected) {
             var progressed = false
             for (rib in pairs){
-                if (next.vNum == rib.first.vNum && prev.vNum != rib.second.vNum){
+                if (model.sameChartVertex(next, rib.first) &&
+                    !model.sameChartVertex(prev, rib.second)
+                ){
                     chain += rib.second
                     prev = next
                     next = rib.second
                     progressed = true
                     break
                 }
-                if (next.vNum == rib.second.vNum && prev.vNum != rib.first.vNum){
+                if (model.sameChartVertex(next, rib.second) &&
+                    !model.sameChartVertex(prev, rib.first)
+                ){
                     chain += rib.first
                     prev = next
                     next = rib.first
@@ -195,14 +189,21 @@ object PlanesAngleOptimizer {
             if (!progressed) return null
         }
 
-        val first = chain.first().vNum
-        val last = chain.last().vNum
+        val first = chain.first()
+        val last = chain.last()
         val closes = pairs.any {
-            (it.first.vNum == last && it.second.vNum == first) ||
-            (it.second.vNum == last && it.first.vNum == first)
+            (model.sameChartVertex(it.first, last) &&
+                model.sameChartVertex(it.second, first)) ||
+            (model.sameChartVertex(it.second, last) &&
+                model.sameChartVertex(it.first, first))
         }
         if (!closes) return null
         if (chain.map { it.vNum }.toSet().size != chain.size) return null
         return chain
+    }
+
+    private fun removedPercent(removed: Long, original: Int): String {
+        if (original <= 0) return "0.0"
+        return "%.1f".format(removed * 100.0 / original)
     }
 }

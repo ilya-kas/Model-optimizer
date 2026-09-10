@@ -7,13 +7,17 @@ import kotlin.math.sqrt
 
 object PlaneAreaOptimizer {
     /**
-     * accuracy: 0 - all collapse, 1 - all stay
+     * accuracy: 0 - all collapse, 1 - all stay (area)
+     * angleAccuracy: 0 - all collapse, 1 - all stay (same metric as PlanesAngleOptimizer)
      * maxNodes: how many planes can be removed. if 0 - then all over accuracy limit
      *
      * Collapses a triangle into its centroid if its area
-     * is at most ((1 - accuracy) * modelDiagonal)^2.
+     * is at most ((1 - accuracy) * modelDiagonal)^2,
+     * the neighborhood is flatter than angleAccuracy,
+     * and the vertices are not on a UV seam or crease.
+     * Remapped corners keep a single averaged vt/vn of the same UV island.
      */
-    fun optimize(model: Model, accuracy: Double, maxNodes: Long = 0){
+    fun optimize(model: Model, accuracy: Double, angleAccuracy: Double, maxNodes: Long = 0){
         if (model.v.isEmpty() || model.f.isEmpty()) return
 
         val vertsBefore = model.v.size
@@ -22,12 +26,12 @@ object PlaneAreaOptimizer {
         val scale = (1.0 - accuracy) * diagonal
         val threshold = scale * scale
 
-        println("area optimize start: $vertsBefore vertices, $facesBefore planes, accuracy=$accuracy, threshold=$threshold")
+        println("area optimize start: $vertsBefore vertices, $facesBefore planes, accuracy=$accuracy, angleAccuracy=$angleAccuracy, threshold=$threshold")
 
         val skipped = HashSet<Int>()
         var planesRemoved = 0L
         while (maxNodes == 0L || planesRemoved < maxNodes){
-            val (plane, area) = findBestPlane(model, skipped)
+            val (plane, area) = findBestPlane(model, skipped, angleAccuracy)
             if (plane < 0 || area > threshold) break
 
             val facesNow = model.f.size
@@ -49,16 +53,17 @@ object PlaneAreaOptimizer {
             }
         }
 
-        println("area optimize done: removed $planesRemoved planes")
-        println("vertices: $vertsBefore -> ${model.v.size}")
-        println("planes: $facesBefore -> ${model.f.size}")
+        println("area optimize done: removed ${removedPercent(planesRemoved, facesBefore)}% planes")
+        println("vertices: $vertsBefore -> ${model.v.size} (removed ${removedPercent((vertsBefore - model.v.size).toLong(), vertsBefore)}%)")
+        println("planes: $facesBefore -> ${model.f.size} (removed ${removedPercent((facesBefore - model.f.size).toLong(), facesBefore)}%)")
     }
 
-    private fun findBestPlane(model: Model, skipped: Set<Int>): Pair<Int, Double>{
+    private fun findBestPlane(model: Model, skipped: Set<Int>, angleAccuracy: Double): Pair<Int, Double>{
+        val connectionList = model.findConnections()
         var bestNum = -1
         var bestArea = Double.POSITIVE_INFINITY
         for (i in model.f.indices){
-            if (i in skipped || !canCollapse(i, model)) continue
+            if (i in skipped || !canCollapse(i, model, connectionList, angleAccuracy)) continue
             val area = planeArea(model, i)
             if (area < bestArea){
                 bestNum = i
@@ -68,7 +73,26 @@ object PlaneAreaOptimizer {
         return bestNum to bestArea
     }
 
-    private fun canCollapse(plane: Int, model: Model): Boolean{
+    private fun canCollapse(
+        plane: Int,
+        model: Model,
+        connectionList: List<List<Int>>,
+        angleAccuracy: Double
+    ): Boolean{
+        val face = model.f.getOrNull(plane) ?: return false
+        if (face.size != 3) return false
+        val verts = face.map { it.vNum }
+        if (verts.any { it !in model.v.indices }) return false
+        if (verts.toSet().size != 3) return false
+        for (v in verts) {
+            if (model.isVertexUvSeam(v, connectionList)) return false
+            if (model.isCrease(v, connectionList, angleAccuracy)) return false
+            if (model.averageNormalAlignment(v, connectionList) < angleAccuracy) return false
+        }
+        return true
+    }
+
+    private fun hasTopology(plane: Int, model: Model): Boolean{
         val face = model.f.getOrNull(plane) ?: return false
         if (face.size != 3) return false
         val verts = face.map { it.vNum }
@@ -76,13 +100,22 @@ object PlaneAreaOptimizer {
         return verts.toSet().size == 3
     }
 
-    private fun collapsePlane(plane: Int, model: Model): Boolean{
-        if (!canCollapse(plane, model)) return false
+    private fun onSameIsland(model: Model, island: List<Corner>, corner: Corner): Boolean {
+        if (island.any { it.vtNum == corner.vtNum }) return true
+        val uv = model.uvOf(corner) ?: return true
+        return island.any { other ->
+            val otherUv = model.uvOf(other) ?: return@any false
+            model.uvDistance(uv, otherUv) <= Model.UV_SEAM_THRESHOLD
+        }
+    }
 
-        val face = model.f[plane]
-        val a = face[0].vNum
-        val b = face[1].vNum
-        val c = face[2].vNum
+    private fun collapsePlane(plane: Int, model: Model): Boolean{
+        if (!hasTopology(plane, model)) return false
+
+        val island = model.f[plane].toList()
+        val a = island[0].vNum
+        val b = island[1].vNum
+        val c = island[2].vNum
         val collapsed = setOf(a, b, c)
 
         val pa = model.v[a]
@@ -95,14 +128,20 @@ object PlaneAreaOptimizer {
         )
         val midIndex = model.v.size
         model.v += mid
-        addAverageAttributes(model, face)
+        val (vtIndex, vnIndex) = addAverageAttributes(model, island)
 
         val toDelete = ArrayList<Int>()
         for (i in model.f.indices) {
             val corners = model.f[i]
-            for (j in corners.indices)
-                if (corners[j].vNum in collapsed)
-                    corners[j] = corners[j].copy(vNum = midIndex)
+            for (j in corners.indices) {
+                val corner = corners[j]
+                if (corner.vNum !in collapsed || !onSameIsland(model, island, corner)) continue
+                corners[j] = corner.copy(
+                    vNum = midIndex,
+                    vtNum = if (vtIndex >= 0) vtIndex else corner.vtNum,
+                    vnNum = if (vnIndex >= 0) vnIndex else corner.vnNum
+                )
+            }
             if (corners.map { it.vNum }.toSet().size < 3)
                 toDelete += i
         }
@@ -110,13 +149,16 @@ object PlaneAreaOptimizer {
         for (i in toDelete.sortedDescending())
             model.f.removeAt(i)
 
-        for (index in collapsed.sortedDescending())
-            model.removeVertex(index)
+        for (index in collapsed.sortedDescending()) {
+            val used = model.f.any { faceCorners -> faceCorners.any { it.vNum == index } }
+            if (!used)
+                model.removeVertex(index)
+        }
 
         return true
     }
 
-    private fun addAverageAttributes(model: Model, face: List<Corner>){
+    private fun addAverageAttributes(model: Model, face: List<Corner>): Pair<Int, Int>{
         var tx = 0.0
         var ty = 0.0
         var vtCount = 0
@@ -138,10 +180,15 @@ object PlaneAreaOptimizer {
                 vnCount++
             }
         }
-        if (vtCount > 0)
+        val vtIndex = if (vtCount > 0) {
             model.vt += Vector(tx / vtCount, ty / vtCount)
-        if (vnCount > 0)
+            model.vt.lastIndex
+        } else -1
+        val vnIndex = if (vnCount > 0) {
             model.vn += Vector(nx / vnCount, ny / vnCount, nz / vnCount)
+            model.vn.lastIndex
+        } else -1
+        return vtIndex to vnIndex
     }
 
     private fun planeArea(model: Model, num: Int): Double{
@@ -174,5 +221,10 @@ object PlaneAreaOptimizer {
         val dy = maxY - minY
         val dz = maxZ - minZ
         return sqrt(dx * dx + dy * dy + dz * dz)
+    }
+
+    private fun removedPercent(removed: Long, original: Int): String {
+        if (original <= 0) return "0.0"
+        return "%.1f".format(removed * 100.0 / original)
     }
 }

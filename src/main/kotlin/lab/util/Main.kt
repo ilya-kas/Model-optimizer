@@ -8,7 +8,7 @@ import lab.logic.PlanesAngleOptimizer
 
 fun main(){
     val model = ModelLoader().load(FILE)
-    PlanesAngleOptimizer.optimize(model, 0.95)
-    PlaneAreaOptimizer.optimize(model, 0.99)
+    PlanesAngleOptimizer.optimize(model, 0.97)
+    PlaneAreaOptimizer.optimize(model, 0.97, 0.95)
     AppFrame(model)
 }
